@@ -1,9 +1,9 @@
 {
-  "name": "kessler-syndrome",
-  "version": "1.0.0",
-  "title": "Kessler Syndrome: Scrap Above Fulgora",
-  "author": "John K Naughton",
-  "description": "Fulgora's orbit is choked with centuries of accumulated industrial debris. Scrap asteroids litter the transit lanes and pack the orbital belt in overwhelming numbers. Mine them for scrap — or use advanced processing to extract depleted uranium fuel cells from the radioactive wreckage.",
+  "name": "Kessler-Syndrome-Factorio-Mod",
+  "version": "0.1.0",
+  "title": "Kessler Syndrome: Scrapsteroids Above Fulgora",
+  "author": "JKNaughton",
+  "description": "Fulgora's orbit is choked with centuries of accumulated industrial debris. Scrapsteroids litter the transit lanes and pack the orbital belt in overwhelming numbers. Mine them for scrap — or use advanced Geiger processing to extract depleted uranium fuel cells and nuclear fuel from the radioactive wreckage.",
   "factorio_version": "2.0",
   "dependencies": [
     "base >= 2.0.0",

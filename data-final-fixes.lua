@@ -28,6 +28,28 @@ else
   log("[kessler-syndrome] FINAL: dying_trigger_effect fixed -> scrap-asteroid-chunk")
 end
 
+-- Fix medium scrap asteroid dying_trigger_effect
+local ast_med = data.raw["asteroid"]["medium-scrap-asteroid"]
+if ast_med then
+  local fixed_med = false
+  if ast_med.dying_trigger_effect then
+    for _, effect in pairs(ast_med.dying_trigger_effect) do
+      if effect.type == "create-asteroid-chunk" then
+        effect.asteroid_name = "scrap-asteroid-chunk"
+        fixed_med = true
+      end
+    end
+  end
+  if not fixed_med then
+    ast_med.dying_trigger_effect = {
+      { type = "create-asteroid-chunk", asteroid_name = "scrap-asteroid-chunk" }
+    }
+  end
+  log("[kessler-syndrome] FINAL: medium-scrap-asteroid dying_trigger_effect fixed")
+else
+  log("[kessler-syndrome] FINAL: medium-scrap-asteroid not present (skipped)")
+end
+
 -- Also fix minable on the chunk entity in case it was reset
 local chunk_entity = data.raw["asteroid-chunk"]["scrap-asteroid-chunk"]
 if chunk_entity and chunk_entity.minable then

@@ -1,6 +1,8 @@
 -- Kessler Syndrome: Scrap Above Fulgora
 -- data-updates.lua
 
+local MULTIPLIER = settings.startup["kessler-syndrome-spawn-multiplier"].value
+
 -- ============================================================
 -- TRANSIT ROUTES: sparse near origin, dense approaching Fulgora
 -- ============================================================
@@ -25,20 +27,34 @@ local function patch_transit(conn_name)
     end
   end
 
-  -- Sparse at the start, building to a dense cluster right before Fulgora
-  table.insert(conn.asteroid_spawn_definitions, {
-    asteroid    = "scrap-asteroid",
+  -- Spawn only within 40% of Fulgora. Direction matters: distance=0 is conn.from,
+  -- distance=1 is conn.to, so flip points if Fulgora is the origin end.
+  local m = MULTIPLIER
+  local spawn_points
+  if conn.to == "fulgora" then
     spawn_points = {
-      { distance = 0.0, probability = 0.000, speed = spd },
-      { distance = 0.3, probability = 0.008, speed = spd },
-      { distance = 0.6, probability = 0.025, speed = spd },
-      { distance = 0.8, probability = 0.060, speed = spd },
-      { distance = 0.9, probability = 0.080, speed = spd },
-      { distance = 1.0, probability = 0.040, speed = spd },
-    },
+      { distance = 0.0, probability = 0.000,      speed = spd },
+      { distance = 0.6, probability = 0.000,      speed = spd },
+      { distance = 0.8, probability = 0.060 * m,  speed = spd },
+      { distance = 0.9, probability = 0.080 * m,  speed = spd },
+      { distance = 1.0, probability = 0.080 * m,  speed = spd },
+    }
+  else
+    spawn_points = {
+      { distance = 0.0, probability = 0.080 * m,  speed = spd },
+      { distance = 0.1, probability = 0.080 * m,  speed = spd },
+      { distance = 0.2, probability = 0.060 * m,  speed = spd },
+      { distance = 0.4, probability = 0.000,      speed = spd },
+      { distance = 1.0, probability = 0.000,      speed = spd },
+    }
+  end
+
+  table.insert(conn.asteroid_spawn_definitions, {
+    asteroid     = "scrap-asteroid",
+    spawn_points = spawn_points,
   })
 
-  log("[kessler-syndrome] patched transit: " .. conn_name)
+  log("[kessler-syndrome] patched transit: " .. conn_name .. " (fulgora is " .. (conn.to == "fulgora" and "to" or "from") .. ")")
   return true
 end
 
@@ -58,7 +74,8 @@ if patched == 0 then
 end
 
 -- ============================================================
--- FULGORA ORBIT: overwhelming numbers of small scrap asteroids
+-- FULGORA ORBIT: overwhelming small scrap + medium scrap at
+--                the same rate as medium metallic asteroids
 -- ============================================================
 local fulgora = data.raw["planet"]["fulgora"]
              or data.raw["space-location"]["fulgora"]
@@ -66,17 +83,21 @@ local fulgora = data.raw["planet"]["fulgora"]
 if fulgora then
   fulgora.asteroid_spawn_definitions = fulgora.asteroid_spawn_definitions or {}
 
-  -- Sum existing orbit probabilities and sample a speed value
+  -- Sum existing orbit probabilities, sample speed, and find medium metallic rate
   local existing_total = 0
+  local medium_metallic_prob = 0
   local spd = 0.1
   for _, def in pairs(fulgora.asteroid_spawn_definitions) do
     if def.probability then existing_total = existing_total + def.probability end
     if def.speed and def.speed > 0 then spd = def.speed end
+    if def.asteroid == "medium-metallic-asteroid" and def.probability then
+      medium_metallic_prob = def.probability
+    end
   end
   if existing_total == 0 then existing_total = 0.1 end
 
-  -- 5x the existing total — almost all of it scrap
-  local scrap_prob = existing_total * 5
+  -- 10x the existing total for small scrap asteroids
+  local scrap_prob = existing_total * 10 * MULTIPLIER
 
   table.insert(fulgora.asteroid_spawn_definitions, {
     asteroid    = "scrap-asteroid",
@@ -84,7 +105,20 @@ if fulgora then
     speed       = spd,
   })
 
-  log(string.format("[kessler-syndrome] Fulgora orbit: existing=%.4f scrap=%.4f", existing_total, scrap_prob))
+  -- Medium scrapsteroids at the same rate as medium metallic (if found)
+  if medium_metallic_prob > 0 and data.raw["asteroid"]["medium-scrap-asteroid"] then
+    table.insert(fulgora.asteroid_spawn_definitions, {
+      asteroid    = "medium-scrap-asteroid",
+      probability = medium_metallic_prob * MULTIPLIER,
+      speed       = spd,
+    })
+    log(string.format("[kessler-syndrome] Fulgora orbit: medium-scrap=%.4f", medium_metallic_prob * MULTIPLIER))
+  else
+    log("[kessler-syndrome] Fulgora orbit: medium-metallic not found or entity missing, skipping medium scrap")
+  end
+
+  log(string.format("[kessler-syndrome] Fulgora orbit: existing=%.4f small-scrap=%.4f multiplier=%.2f",
+    existing_total, scrap_prob, MULTIPLIER))
 else
   log("[kessler-syndrome] WARNING: fulgora planet/space-location not found")
 end
